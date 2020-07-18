@@ -15,6 +15,8 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using static OVRHand;
+using OculusSampleFramework;
 //using System.Linq;
 //using Valve.VR;
 
@@ -550,15 +552,40 @@ public class manipulator : MonoBehaviour {
   }
 
   public bool triggerDown = false;
-  void Update() {
+    public bool pinchPinkyDown = false;
+    static OVRPlugin.Controller lastControl = OVRPlugin.Controller.None;
+    void Update() {
+ 
     updateProngs();
     bool triggerButtonDown, triggerButtonUp, menuButtonDown;
 
-    if (masterControl.instance.currentPlatform == masterControl.platform.Vive) {
+        OVRPlugin.Controller currentControl = OVRPlugin.GetActiveController(); //get current controller scheme
+        bool currentControlHands = false;
+        bool currentControlChanged = false;
+        float pinchIndexStrength = 0;
+        float pinchPinkyStrength = 0;
+        if ((OVRPlugin.Controller.Hands == currentControl) || (OVRPlugin.Controller.LHand == currentControl) || (OVRPlugin.Controller.RHand == currentControl))
+        {
+            currentControlHands = true;
+            pinchIndexStrength = Hands.Instance.RightHand.PinchStrength(OVRPlugin.HandFinger.Index);
+            pinchPinkyStrength = Hands.Instance.RightHand.PinchStrength(OVRPlugin.HandFinger.Pinky);
+         }
+        if (currentControl != lastControl)
+        {
+            currentControlChanged = true;
+            lastControl = currentControl;
+        }
+        if (masterControl.instance.currentPlatform == masterControl.platform.Vive) {
 //      triggerButtonDown = SteamVR_Controller.Input(controllerIndex).GetPressDown(SteamVR_Controller.ButtonMask.Trigger);
 //      triggerButtonUp = SteamVR_Controller.Input(controllerIndex).GetPressUp(SteamVR_Controller.ButtonMask.Trigger);
         if (!triggerDown)
         {
+            if (currentControlHands)
+            {
+                triggerButtonDown = pinchIndexStrength > 0.85;
+            }
+            else
+            {
                 if (controllerIndex == 0)
                 {
                     triggerButtonDown = Input.GetAxis("triggerR") > 0.75;
@@ -571,6 +598,7 @@ public class manipulator : MonoBehaviour {
                 {
                     triggerButtonDown = false;
                 }
+            }
         }
         else
         {
@@ -578,6 +606,17 @@ public class manipulator : MonoBehaviour {
         }
         if (triggerDown)
         {
+            if (currentControlHands)
+            { 
+                triggerButtonUp = pinchIndexStrength < 0.50;
+            }
+            else if (!currentControlHands && currentControlChanged)
+            {
+                // force an trigger button up when we lose hands
+                triggerButtonUp = true;
+            }
+            else
+            {
                 if (controllerIndex == 0)
                 {
                     triggerButtonUp = Input.GetAxis("triggerR") < 0.25;
@@ -590,6 +629,7 @@ public class manipulator : MonoBehaviour {
                 {
                     triggerButtonUp = false;
                 }
+            }
         }
         else
         {
@@ -598,18 +638,45 @@ public class manipulator : MonoBehaviour {
 
             viveTouchpadUpdate();
             if (!usingOculus) {
-//        menuButtonDown = SteamVR_Controller.Input(controllerIndex).GetPressDown(SteamVR_Controller.ButtonMask.ApplicationMenu);
-                if (controllerIndex == 0)
+                //        menuButtonDown = SteamVR_Controller.Input(controllerIndex).GetPressDown(SteamVR_Controller.ButtonMask.ApplicationMenu);
+                if (currentControlHands)
                 {
-                    menuButtonDown = Input.GetButtonDown("menuButtonR");
-                }
-                else if (controllerIndex == 1)
-                {
-                    menuButtonDown = Input.GetButtonDown("menuButtonL");
+                    if (pinchPinkyStrength > 0.85)
+                    {
+                        if (pinchPinkyDown)
+                        {
+                            menuButtonDown = false;
+                        }
+                        else
+                        {
+                            menuButtonDown = true;
+                            pinchPinkyDown = true;
+                        }
+                    }
+                    else if (pinchPinkyStrength < 0.25)
+                    {
+                        pinchPinkyDown = false;
+                        menuButtonDown = false;
+                    }
+                    else
+                    {
+                        menuButtonDown = false;
+                    } 
                 }
                 else
                 {
-                    menuButtonDown = false;
+                    if (controllerIndex == 0)
+                    {
+                        menuButtonDown = Input.GetButtonDown("menuButtonR");
+                    }
+                    else if (controllerIndex == 1)
+                    {
+                        menuButtonDown = Input.GetButtonDown("menuButtonL");
+                    }
+                    else
+                    {
+                        menuButtonDown = false;
+                    }
                 }
       } else {
                 Vector2 pos; // = SteamVR_Controller.Input(controllerIndex).GetAxis();
@@ -629,18 +696,45 @@ public class manipulator : MonoBehaviour {
                 if (grabbing && selectedObject != null) selectedObject.updateTouchPos(pos);
 
         secondaryOculusButtonUpdate();
-//        menuButtonDown = SteamVR_Controller.Input(controllerIndex).GetPressDown(EVRButtonId.k_EButton_A);
-                if (controllerIndex == 0)
+                //        menuButtonDown = SteamVR_Controller.Input(controllerIndex).GetPressDown(EVRButtonId.k_EButton_A);
+                if (currentControlHands)
                 {
-                    menuButtonDown = Input.GetButtonDown("menuButtonR");
-                }
-                else if (controllerIndex == 1)
-                {
-                    menuButtonDown = Input.GetButtonDown("menuButtonL");
+                    if (pinchPinkyStrength > 0.85)
+                    {
+                        if (pinchPinkyDown)
+                        {
+                            menuButtonDown = false;
+                        }
+                        else
+                        {
+                            menuButtonDown = true;
+                            pinchPinkyDown = true;
+                        }
+                    }
+                    else if (pinchPinkyStrength < 0.25)
+                    {
+                        pinchPinkyDown = false;
+                        menuButtonDown = false;
+                    }
+                    else
+                    {
+                        menuButtonDown = false;
+                    }
                 }
                 else
                 {
-                    menuButtonDown = false;
+                    if (controllerIndex == 0)
+                    {
+                        menuButtonDown = Input.GetButtonDown("menuButtonR");
+                    }
+                    else if (controllerIndex == 1)
+                    {
+                        menuButtonDown = Input.GetButtonDown("menuButtonL");
+                    }
+                    else
+                    {
+                        menuButtonDown = false;
+                    }
                 }
       }
     } else {
